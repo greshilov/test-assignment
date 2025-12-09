@@ -16,9 +16,8 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 data class CatWithBreed(val id: Long, val name: String, val breed: String)
-data class NewCat(val name: String, val breed: String)
-
-@Serviceclass CatService(
+data class NewCat(val name: String, val breed: String)@Service
+class CatService(
     private val catRepository: CatRepository,
     private val catBreedRepository: CatBreedRepository,
     private val catRecommenderClient: RandomCoffeeApiClient
@@ -26,14 +25,50 @@ data class NewCat(val name: String, val breed: String)
 
     private val log: Logger = LoggerFactory.getLogger(CatService::class.java)
 
-    fun generatePairs(limit: Int): List<Pair<CatWithBreed, CatWithBreed>> {
+    /**
+     * Suggests cats in batch to avoid N+1 pattern.
+     * Makes a single HTTP call to get recommendations for all cats.
+     *
+     * @param catList the list of cats to get recommendations for
+     * @return a map of Cat to recommendation string
+     */
+    fun suggestCatsInBatch(catList: List<Cat>): Map<Cat, String> {
+        return try {
+            if (catList.isEmpty()) {
+                return emptyMap()
+            }
+            catRecommenderClient.suggestCatsInBatch(catList)
+        } catch (e: Exception) {
+            log.error("Error occurred while suggesting cats in batch", e)
+            catList.associateWith { "" }
+        }
+    }
+
+    /**
+     * Suggests a single cat recommendation.
+     * @deprecated Use suggestCatsInBatch() for better performance to avoid N+1 pattern
+     *
+     * @param cat the cat to get a recommendation for
+     * @return the recommendation string
+     */
+    @Deprecated(message = "Use suggestCatsInBatch() instead to avoid N+1 pattern")
+    fun suggestCat(cat: Cat): String {
+        return try {
+            catRecommenderClient.suggestCat(cat)
+        } catch (e: Exception) {
+            log.error("Error occurred while suggesting cat", e)
+            ""
+        }
+    }fun generatePairs(limit: Int): List<Pair<CatWithBreed, CatWithBreed>> {
         val catList = catRepository.findAllWithLimit(limit).map {
             CatWithBreed(
                 it.id,
                 it.name,
                 catBreedRepository.findByIdOrNull(it.breedId)?.name ?: throw RuntimeException("Breed not found")
             )
-        }return catList.map { cat -> cat to suggestCat(cat) }
+        }
+        val suggestionsMap = suggestCatsInBatch(catList)
+        return catList.map { cat -> cat to suggestionsMap[cat] }
             .map { (cat, friendId) -> cat to catRepository.findById(friendId).orElseThrow() }
             .map { (cat, friend) ->
                 cat to CatWithBreed(
@@ -42,9 +77,7 @@ data class NewCat(val name: String, val breed: String)
                     catBreedRepository.findByIdOrNull(friend.breedId)?.name ?: throw RuntimeException("Breed not found")
                 )
             }
-    }
-
-    @Transactional
+    }@Transactional
     fun addCat(cat: NewCat): CatWithBreed {
         val breed = catBreedRepository.findByName(cat.breed).orElseThrow { RuntimeException("Breed not found") }
         val createdCat = catRepository.save(Cat(0L, breed.id, cat.name, ""))
@@ -59,9 +92,7 @@ data class NewCat(val name: String, val breed: String)
                 JACKSON_MAPPER.readValue(e.contentUTF8(), FastAPIExceptionResponse::class.java).detail,
                 e
             )
-        }
-
-    @WithSpan
+        }@WithSpan
     @Transactional
     fun findCatsByName(name: String): List<CatWithBreed> {
         val result = catRepository.findAllByName(name).map {
@@ -90,6 +121,4 @@ data class NewCat(val name: String, val breed: String)
     companion object {
         private val JACKSON_MAPPER = ObjectMapper()
     }
-}
-
-data class FastAPIExceptionResponse(@JsonProperty("detail") val detail: String)class CatRecommenderIntegrationException(message: String, exception: Exception) : RuntimeException(message, exception)
+}data class FastAPIExceptionResponse(@JsonProperty("detail") val detail: String)class CatRecommenderIntegrationException(message: String, exception: Exception) : RuntimeException(message, exception)
