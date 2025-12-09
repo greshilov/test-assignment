@@ -18,8 +18,7 @@ import org.springframework.transaction.annotation.Transactional
 data class CatWithBreed(val id: Long, val name: String, val breed: String)
 data class NewCat(val name: String, val breed: String)
 
-@Service
-class CatService(
+@Serviceclass CatService(
     private val catRepository: CatRepository,
     private val catBreedRepository: CatBreedRepository,
     private val catRecommenderClient: RandomCoffeeApiClient
@@ -34,9 +33,7 @@ class CatService(
                 it.name,
                 catBreedRepository.findByIdOrNull(it.breedId)?.name ?: throw RuntimeException("Breed not found")
             )
-        }
-
-        return catList.map { cat -> cat to suggestCat(cat) }
+        }return catList.map { cat -> cat to suggestCat(cat) }
             .map { (cat, friendId) -> cat to catRepository.findById(friendId).orElseThrow() }
             .map { (cat, friend) ->
                 cat to CatWithBreed(
@@ -52,9 +49,7 @@ class CatService(
         val breed = catBreedRepository.findByName(cat.breed).orElseThrow { RuntimeException("Breed not found") }
         val createdCat = catRepository.save(Cat(0L, breed.id, cat.name, ""))
         return CatWithBreed(createdCat.id, createdCat.name, breed.name)
-    }
-
-    @WithSpan
+    }@WithSpan
     private fun suggestCat(cat: CatWithBreed): Long =
         try {
             catRecommenderClient.suggestCat(SuggestCatForRandomCoffeeRequest(cat.id, cat.name, cat.breed)).id
@@ -77,9 +72,7 @@ class CatService(
             )
         }
         return result
-    }
-
-    @WithSpan
+    }@WithSpan
     @Transactional
     fun getAllCats(): List<CatWithBreed> =
         catRepository.findAll().map {
@@ -99,5 +92,4 @@ class CatService(
     }
 }
 
-data class FastAPIExceptionResponse(@JsonProperty("detail") val detail: String)
-class CatRecommenderIntegrationException(message: String, exception: Exception) : RuntimeException(message, exception)
+data class FastAPIExceptionResponse(@JsonProperty("detail") val detail: String)class CatRecommenderIntegrationException(message: String, exception: Exception) : RuntimeException(message, exception)
