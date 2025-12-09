@@ -25,4 +25,6 @@ interface CatRepository : CrudRepository<Cat, Long> {
 
     @Query("SELECT * FROM CAT ORDER BY ID DESC LIMIT :limit")
     fun findAllWithLimit(limit: Int): List<Cat>
+
+    fun findByIdIn(ids: Collection<Long>): List<Cat>
 }
