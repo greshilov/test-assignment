@@ -17,34 +17,52 @@ import org.springframework.transaction.annotation.Transactional
 
 data class CatWithBreed(val id: Long, val name: String, val breed: String)
 data class NewCat(val name: String, val breed: String)
-
-@Serviceclass CatService(
+data class SuggestCatRequest(val cats: List<CatWithBreed>)
+data class SuggestCatResponse(val recommendations: List<CatRecommendation>)
+data class CatRecommendation(val catId: Long, val friendId: Long)@Serviceclass CatService(
     private val catRepository: CatRepository,
     private val catBreedRepository: CatBreedRepository,
     private val catRecommenderClient: RandomCoffeeApiClient
 ) {
 
-    private val log: Logger = LoggerFactory.getLogger(CatService::class.java)
-
-    fun generatePairs(limit: Int): List<Pair<CatWithBreed, CatWithBreed>> {
-        val catList = catRepository.findAllWithLimit(limit).map {
+    private val log: Logger = LoggerFactory.getLogger(CatService::class.java)fun generatePairs(limit: Int): List<Pair<CatWithBreed, CatWithBreed>> {
+        // Step 1: Fetch all cats once
+        val cats = catRepository.findAllWithLimit(limit)
+        
+        // Step 2: Batch fetch all breeds for those cats
+        val breedIds = cats.map { it.breedId }.distinct()
+        val breedsMap = catBreedRepository.findAllById(breedIds).associateBy { it.id }
+        
+        val catList = cats.map {
             CatWithBreed(
                 it.id,
                 it.name,
-                catBreedRepository.findByIdOrNull(it.breedId)?.name ?: throw RuntimeException("Breed not found")
+                breedsMap[it.breedId]?.name ?: throw RuntimeException("Breed not found")
             )
-        }return catList.map { cat -> cat to suggestCat(cat) }
-            .map { (cat, friendId) -> cat to catRepository.findById(friendId).orElseThrow() }
-            .map { (cat, friend) ->
-                cat to CatWithBreed(
-                    friend.id,
-                    friend.name,
-                    catBreedRepository.findByIdOrNull(friend.breedId)?.name ?: throw RuntimeException("Breed not found")
-                )
-            }
-    }
-
-    @Transactional
+        }
+        
+        // Step 3: Batch call recommender API
+        val friendIds = suggestCats(catList)
+        
+        // Step 4: Batch fetch friend cats
+        val friendCats = catRepository.findAllById(friendIds)
+        val friendCatsMap = friendCats.associateBy { it.id }
+        
+        // Step 5: Batch fetch friend breeds
+        val friendBreedIds = friendCats.map { it.breedId }.distinct()
+        val friendBreedsMap = catBreedRepository.findAllById(friendBreedIds).associateBy { it.id }
+        
+        // Step 6: Return results
+        return catList.mapIndexed { index, cat ->
+            val friendId = friendIds[index]
+            val friend = friendCatsMap[friendId] ?: throw RuntimeException("Friend cat not found")
+            cat to CatWithBreed(
+                friend.id,
+                friend.name,
+                friendBreedsMap[friend.breedId]?.name ?: throw RuntimeException("Breed not found")
+            )
+        }
+    }@Transactional
     fun addCat(cat: NewCat): CatWithBreed {
         val breed = catBreedRepository.findByName(cat.breed).orElseThrow { RuntimeException("Breed not found") }
         val createdCat = catRepository.save(Cat(0L, breed.id, cat.name, ""))
@@ -59,29 +77,38 @@ data class NewCat(val name: String, val breed: String)
                 JACKSON_MAPPER.readValue(e.contentUTF8(), FastAPIExceptionResponse::class.java).detail,
                 e
             )
-        }
-
-    @WithSpan
+        }@WithSpan
     @Transactional
     fun findCatsByName(name: String): List<CatWithBreed> {
-        val result = catRepository.findAllByName(name).map {
+        val cats = catRepository.findAllByName(name)
+        val breedIds = cats.map { it.breedId }.distinct()
+        val breeds = catBreedRepository.findAllById(breedIds).associateBy { it.id }
+        
+        val result = cats.map {
             CatWithBreed(
                 it.id,
                 it.name,
-                catBreedRepository.findByIdOrNull(it.breedId)?.name ?: throw RuntimeException("Breed not found")
+                breeds[it.breedId]?.name ?: throw RuntimeException("Breed not found")
             )
         }
         return result
-    }@WithSpan
+    }
+
+    @WithSpan
     @Transactional
-    fun getAllCats(): List<CatWithBreed> =
-        catRepository.findAll().map {
+    fun getAllCats(): List<CatWithBreed> {
+        val cats = catRepository.findAll()
+        val breedIds = cats.map { it.breedId }.distinct()
+        val breeds = catBreedRepository.findAllById(breedIds).associateBy { it.id }
+        
+        return cats.map {
             CatWithBreed(
                 it.id,
                 it.name,
-                catBreedRepository.findByIdOrNull(it.breedId)?.name ?: throw RuntimeException("Breed not found")
+                breeds[it.breedId]?.name ?: throw RuntimeException("Breed not found")
             )
         }
+    }
 
     @WithSpan
     @Transactional
@@ -90,6 +117,4 @@ data class NewCat(val name: String, val breed: String)
     companion object {
         private val JACKSON_MAPPER = ObjectMapper()
     }
-}
-
-data class FastAPIExceptionResponse(@JsonProperty("detail") val detail: String)class CatRecommenderIntegrationException(message: String, exception: Exception) : RuntimeException(message, exception)
+}data class FastAPIExceptionResponse(@JsonProperty("detail") val detail: String)class CatRecommenderIntegrationException(message: String, exception: Exception) : RuntimeException(message, exception)
