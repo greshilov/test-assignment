@@ -1,6 +1,4 @@
-package org.jetbrains.api
-
-import jakarta.servlet.http.HttpServletRequest
+package org.jetbrains.apiimport jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotNull
 import org.jetbrains.api.model.AllCatsResponse
@@ -18,15 +16,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RequestParamimport org.springframework.web.bind.annotation.ResponseStatus
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.*
-
-@Validated
-@Controller
-class CatController(
+import java.util.*@Validated
+@Controllerclass CatController(
     private val catService: CatService
 ) {
 
@@ -53,9 +47,7 @@ class CatController(
                     request.requestURL.toString(),
                     ex.localizedMessage
                 )
-            )
-
-    @ExceptionHandler(value = [RuntimeException::class])
+            )@ExceptionHandler(value = [RuntimeException::class])
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun onRuntimeException(ex: RuntimeException, request: HttpServletRequest): ResponseEntity<ApiErrorResponse> =
         ResponseEntity.badRequest()
@@ -67,9 +59,7 @@ class CatController(
                     request.requestURL.toString(),
                     ex.localizedMessage
                 )
-            )
-
-    @RequestMapping(
+            )@RequestMapping(
         method = [RequestMethod.POST],
         value = ["/api/cat"],
         produces = ["application/json"],
@@ -87,9 +77,7 @@ class CatController(
                 createdCat.breed
             )
         )
-    }
-
-    @RequestMapping(
+    }@RequestMapping(
         method = [RequestMethod.POST],
         value = ["/api/cats/pairs"],
         produces = ["application/json"]
@@ -116,9 +104,7 @@ class CatController(
                 )
             }
         )
-    }
-
-    @RequestMapping(
+    }@RequestMapping(
         method = [RequestMethod.GET],
         value = ["/api/cats"],
         produces = ["application/json"]
