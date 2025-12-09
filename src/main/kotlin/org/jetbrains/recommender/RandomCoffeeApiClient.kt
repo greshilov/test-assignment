@@ -3,6 +3,7 @@ package org.jetbrains.recommender
 import jakarta.validation.Valid
 import org.jetbrains.recommender.model.CatForCoffeeResponse
 import org.jetbrains.recommender.model.SuggestCatForRandomCoffeeRequest
+import org.jetbrains.recommender.model.Cat
 import org.springframework.cloud.openfeign.FeignClient
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.PostMapping
@@ -12,4 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping
 fun interface RandomCoffeeApiClient {
     @PostMapping("/api/recommend", consumes = ["application/json"])
     fun suggestCat(@Valid suggestCatForRandomCoffeeRequest: SuggestCatForRandomCoffeeRequest): CatForCoffeeResponse
+
+    @PostMapping("/api/recommend/batch", consumes = ["application/json"])
+    fun suggestCatsInBatch(@Valid cats: List<Cat>): Map<Cat, String>
 }
