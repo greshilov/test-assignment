@@ -16,9 +16,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 data class CatWithBreed(val id: Long, val name: String, val breed: String)
-data class NewCat(val name: String, val breed: String)
-
-@Serviceclass CatService(
+data class NewCat(val name: String, val breed: String)@Serviceclass CatService(
     private val catRepository: CatRepository,
     private val catBreedRepository: CatBreedRepository,
     private val catRecommenderClient: RandomCoffeeApiClient
@@ -37,8 +35,7 @@ data class NewCat(val name: String, val breed: String)
                 it.name,
                 breedsMap[it.breedId]?.name ?: throw RuntimeException("Breed not found")
             )
-        }
-val friendIds = catList.map { suggestCat(it) }
+        }val friendIds = catList.map { suggestCat(it) }
     val friendCats = catRepository.findAllById(friendIds)
     val friendCatsMap = friendCats.associateBy { it.id }
     val breedIds = friendCats.map { it.breedId }.distinct()
@@ -57,8 +54,7 @@ val friendIds = catList.map { suggestCat(it) }
     }
 }
 
-@Transactional
-fun addCat(cat: NewCat): CatWithBreed {
+@Transactionalfun addCat(cat: NewCat): CatWithBreed {
     val breed = catBreedRepository.findByName(cat.breed).orElseThrow { RuntimeException("Breed not found") }
     val createdCat = catRepository.save(Cat(0L, breed.id, cat.name, ""))
     return CatWithBreed(createdCat.id, createdCat.name, breed.name)
@@ -72,9 +68,7 @@ fun addCat(cat: NewCat): CatWithBreed {
                 JACKSON_MAPPER.readValue(e.contentUTF8(), FastAPIExceptionResponse::class.java).detail,
                 e
             )
-        }
-
-    @WithSpan
+        }@WithSpan
     @Transactional
     fun findCatsByName(name: String): List<CatWithBreed> {
         val cats = catRepository.findAllByName(name)
@@ -100,9 +94,7 @@ fun addCat(cat: NewCat): CatWithBreed {
                 allBreeds[it.breedId]?.name ?: throw RuntimeException("Breed not found")
             )
         }
-    }
-
-    @WithSpan
+    }@WithSpan
     @Transactional
     fun countCats(): Long = catRepository.countAll()
 
