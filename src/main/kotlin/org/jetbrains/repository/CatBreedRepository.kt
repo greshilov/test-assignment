@@ -15,4 +15,5 @@ data class CatBreed(
 
 interface CatBreedRepository : CrudRepository<CatBreed, Long> {
     fun findByName(name: String): Optional<CatBreed>
+    fun findByIdIn(ids: Collection<Long>): List<CatBreed>
 }
