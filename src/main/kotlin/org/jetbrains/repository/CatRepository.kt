@@ -23,6 +23,6 @@ interface CatRepository : CrudRepository<Cat, Long> {
 
     fun findAllByName(name: String): List<Cat>
 
-    @Query("SELECT * FROM CAT ORDER BY ID DESC LIMIT :limit")
+    @Query("SELECT c.* FROM CAT c JOIN cat_breed cb ON c.breed_id = cb.id ORDER BY c.ID DESC LIMIT :limit")
     fun findAllWithLimit(limit: Int): List<Cat>
 }
